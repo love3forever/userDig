@@ -5,6 +5,8 @@
 # @Link    : https://eclipsesv.com
 # @Version : $Id$
 import json
+import time
+
 from requests import Session
 from bs4 import BeautifulSoup
 from params_dicts import get_user_follows_param, get_user_fans_param, \
@@ -40,7 +42,7 @@ def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
-        origin_data = session.get(url)
+        origin_data = session.get(url, timeout=10)
         if origin_data.status_code == 200:
             return origin_data
         else:
@@ -51,10 +53,14 @@ def get_data_from_web(url):
 
 
 def post_data_to_web(url, params):
-    result_data = session.post(url, data=params)
-    if result_data:
-        return json.loads(result_data.text) or None
-    else:
+    try:
+        result_data = session.post(url, data=params, timeout=10)
+        if result_data.status_code == 200:
+            return json.loads(result_data.text)
+        else:
+            return None
+    except Exception as e:
+        print(str(e))
         return None
 
 
@@ -111,24 +117,26 @@ def data_poster(uid, postURL, keyword, getparamFunc):
     ##########################################
     if hasattr(getparamFunc, '__call__'):
         post_param = getparamFunc(uid)
-        data_list = []
         data_flag = True
         data_times = 0
         while data_flag:
             post_param['offset'] = int(data_times * 100)
             encrtyed_param = encrypted_request(post_param)
             response_data = post_data_to_web(postURL, encrtyed_param)
+            if not response_data:
+                print('------------系统休眠------------')
+                time.sleep(60 * 80)
+                break
             if keyword not in response_data.keys():
                 break
             if response_data[keyword]:
-                data_list.extend(response_data[keyword])
+                yield response_data[keyword]
             data_times += 1
             try:
                 data_flag = response_data['more']
             except Exception as e:
                 print(str(e))
                 data_flag = False
-        return data_list
     else:
         print('{} should be callable'.format(str(getparamFunc)))
 
@@ -136,10 +144,7 @@ def data_poster(uid, postURL, keyword, getparamFunc):
 def data_poster_withoffset(post_url, post_content):
     encrtyed_param = encrypted_request(post_content)
     response_data = post_data_to_web(post_url, encrtyed_param)
-    data_list = {}
-    if response_data:
-        data_list = response_data
-    return data_list
+    return response_data
 
 ##########################################
 # 获取用户相关内容 #########################
@@ -157,9 +162,9 @@ def get_user_follows_withoffset(userId, page):
     follows_url = user_follows_URL.format(userId)
     post_data = follow_and_fans_data
     post_data['userId'] = userId
-    post_data['limit'] = 20
+    post_data['limit'] = 100
     post_data['offset'] = (page - 1) * post_data['limit']
-    return data_poster_withoffset(follows_url, post_data)
+    return data_poster_withoffset(follows_url, post_data)['follow']
 
 
 def get_user_fans(userid):
@@ -172,9 +177,9 @@ def get_user_fans_withoffset(userId, page):
     fans_url = user_fans_URL.format(userId)
     post_data = follow_and_fans_data
     post_data['userId'] = userId
-    post_data['limit'] = 20
+    post_data['limit'] = 100
     post_data['offset'] = (page - 1) * post_data['limit']
-    return data_poster_withoffset(fans_url, post_data)
+    return data_poster_withoffset(fans_url, post_data)['followeds']
 
 
 def get_user_playlist(userid):
@@ -270,7 +275,6 @@ def get_user_index(userid):
             index_networks = networks_tag[0]
             index_social_networks = {}
             for item in index_networks.select('li > a'):
-                print(item)
                 index_social_networks.setdefault(item['title'], item['href'])
             index_data.setdefault('social_networks', index_social_networks)
         return index_data
