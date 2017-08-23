@@ -1,0 +1,5 @@
+neo4j-driver==1.4.0
+requests==2.9.1
+lxml==3.7.3
+bs4==0.0.1
+pycrypto==2.6.1
