@@ -7,13 +7,14 @@
 import json
 import time
 
-from requests import Session
+import requests
 from bs4 import BeautifulSoup
 from params_dicts import get_user_follows_param, get_user_fans_param, \
     get_playlist_comments_param, get_user_playlist_param, \
     get_user_playrecord_week, get_user_playrecord_all, album_comments,\
     follow_and_fans_data
 from encrypter import encrypted_request
+from proxy_hunter import gen_proxy
 
 host_url = 'https://music.163.com{}'
 indexURL = 'https://music.163.com/discover'
@@ -35,33 +36,51 @@ album_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/R_AL_3_{}'
 djradio_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/A_DJ_1_{}?csrf_token='
 djradio_detail_URL = 'http://music.163.com/dj?id={}'
 
-session = Session()
+proxy_pool = gen_proxy()
+proxies = {
+    "http": "",
+    "https": "",
+}
 
 
 def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
-        origin_data = session.get(url, timeout=10)
+        origin_data = requests.get(url, timeout=10)
         if origin_data.status_code == 200:
             return origin_data
         else:
             print(origin_data.status_code)
-            return None
+            gen_new_request()
+            return get_data_from_web(url)
     else:
         return None
 
 
 def post_data_to_web(url, params):
     try:
-        result_data = session.post(url, data=params, timeout=10)
+        result_data = requests.post(url, data=params, timeout=10)
         if result_data.status_code == 200:
             return json.loads(result_data.text)
         else:
-            return None
+            gen_new_request()
+            post_data_to_web(url, params)
     except Exception as e:
         print(str(e))
-        return None
+        gen_new_request()
+        post_data_to_web(url, params)
+
+
+def gen_new_request():
+    try:
+        proxy_pair = next(proxy_pool)
+        proxies['http'] = "http://{}:{}".format(*proxy_pair)
+        proxies['https'] = "http://{}:{}".format(*proxy_pair)
+        print('generating new proxy:{}:{}'.format(*proxy_pair))
+        requests.proxies = proxies
+    except Exception as e:
+        print(str(e))
 
 
 def get_playlist_data(playlist_id):
@@ -124,8 +143,8 @@ def data_poster(uid, postURL, keyword, getparamFunc):
             encrtyed_param = encrypted_request(post_param)
             response_data = post_data_to_web(postURL, encrtyed_param)
             if not response_data:
-                print('------------系统休眠------------')
-                time.sleep(60 * 80)
+                # print('------------系统休眠------------')
+                # time.sleep(60 * 80)
                 break
             if keyword not in response_data.keys():
                 break

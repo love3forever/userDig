@@ -7,7 +7,7 @@
 from pymongo import MongoClient, DESCENDING
 from itertools import ifilter, chain
 import data_poster
-import time
+import json
 
 mongo = MongoClient()
 db = mongo['userDig']
@@ -21,41 +21,42 @@ def get_user_info(userId):
     user_info = dict()
     user_info.setdefault('userId', userId)
     user_basic_info = data_poster.get_user_index(userId)
-    user_info.update(user_basic_info)
-    if int(user_info['fans']) < 300:
-        user_fans_list = data_poster.get_user_fans(userId)
-        for fans in user_fans_list:
-            user_info.setdefault('fans_list', []).extend(
-                [x['userId'] for x in fans])
-    else:
-        for x in range(1, 11):
-            time.sleep(1)
-            print('requesting fans data for user:{} with offset:{}'.format(userId, x))
-            user_fans_withoffset = data_poster.get_user_fans_withoffset(
-                userId, x)
-            if user_fans_withoffset:
+    if user_basic_info:
+        user_info.update(user_basic_info)
+        if int(user_info['fans']) < 300:
+            user_fans_list = data_poster.get_user_fans(userId)
+            for fans in user_fans_list:
                 user_info.setdefault('fans_list', []).extend(
-                    [x['userId'] for x in user_fans_withoffset])
-            else:
-                break
-    print('got user:{} fans data'.format(userId))
-    if int(user_info['follows']) < 300:
-        user_follows_list = data_poster.get_user_follows(userId)
-        for follows in user_follows_list:
-            user_info.setdefault('follows_list', []).extend(
-                [x['userId'] for x in follows])
-    else:
-        for x in range(1, 11):
-            time.sleep(1)
-            print('requesting follows data for user:{} with offset:{}'.format(userId, x))
-            user_follows_withoffset = data_poster.get_user_follows_withoffset(
-                userId, x)
-            if user_follows_withoffset:
+                    [x['userId'] for x in fans])
+        else:
+            for x in range(1, 11):
+                # time.sleep(1)
+                # print('requesting fans data for user:{} with offset:{}'.format(userId, x))
+                user_fans_withoffset = data_poster.get_user_fans_withoffset(
+                    userId, x)
+                if user_fans_withoffset:
+                    user_info.setdefault('fans_list', []).extend(
+                        [x['userId'] for x in user_fans_withoffset])
+                else:
+                    break
+        # print('got user:{} fans data'.format(userId))
+        if int(user_info['follows']) < 300:
+            user_follows_list = data_poster.get_user_follows(userId)
+            for follows in user_follows_list:
                 user_info.setdefault('follows_list', []).extend(
-                    [x['userId'] for x in user_follows_withoffset])
-            else:
-                break
-    print('got user:{} follows data'.format(userId))
+                    [x['userId'] for x in follows])
+        else:
+            for x in range(1, 11):
+                # time.sleep(1)
+                # print('requesting follows data for user:{} with offset:{}'.format(userId, x))
+                user_follows_withoffset = data_poster.get_user_follows_withoffset(
+                    userId, x)
+                if user_follows_withoffset:
+                    user_info.setdefault('follows_list', []).extend(
+                        [x['userId'] for x in user_follows_withoffset])
+                else:
+                    break
+        print('got user:{} follows data'.format(userId))
     return user_info
 
 
@@ -82,25 +83,32 @@ def crawler_gogo(times_end=10):
                     fans_list = item.setdefault('fans_list', [])
                     follows_list = item.setdefault('follows_list', [])
                     all_list = chain(fans_list, follows_list)
-                    all_list_available = ifilter(
-                        is_user_not_exists, all_list)
+                    all_list_available = filter(is_user_not_exists, all_list)
                     for x in all_list_available:
                         insert_data(get_user_info(x), i)
 
 
 def is_user_not_exists(userId):
     data = col.find_one({'userId': userId})
-    if data:
-        print('user:{} data exists'.format(userId))
+    if data is not None:
+        # print('user:{} data exists'.format(userId))
         return False
     else:
         return True
 
 
 def insert_data(info, iteration_times):
-    if is_user_not_exists(info['userId']):
-        info.setdefault('iteration_times', iteration_times)
-        col.insert_one(info)
+    insert_data = dict(info)
+    if is_user_not_exists(insert_data['userId']):
+        insert_data.setdefault('iteration_times', iteration_times)
+        try:
+            # print(json.dumps(insert_data))
+            col.insert_one(insert_data)
+        except Exception as e:
+            print(str(e))
+            print('Error happened:{}'.format(insert_data))
+        else:
+            print('user:{} info inserted'.format(insert_data['userId']))
 
 
 if __name__ == '__main__':
