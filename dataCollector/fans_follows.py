@@ -5,9 +5,10 @@
 # @Link    : https://eclipsesv.com
 # @Version : $Id$
 from pymongo import MongoClient, DESCENDING
-from itertools import ifilter, chain
+from itertools import ifilter, chain, islice
 import data_poster
 import json
+from threading import Thread
 
 mongo = MongoClient()
 db = mongo['userDig']
@@ -84,8 +85,16 @@ def crawler_gogo(times_end=10):
                     follows_list = item.setdefault('follows_list', [])
                     all_list = chain(fans_list, follows_list)
                     all_list_available = filter(is_user_not_exists, all_list)
-                    for x in all_list_available:
-                        insert_data(get_user_info(x), i)
+                    thread_num = len(all_list_available) / 200
+                    for num in range(thread_num):
+                        partial_list_available = islice(
+                            all_list_available, num * 200, num * 200 + 200)
+                        for x in partial_list_available:
+                            crawler = Thread(target=insert_data,
+                                             args=(get_user_info(x), i,))
+                            crawler.start()
+                    # for x in all_list_available:
+                    #     insert_data(get_user_info(x), i)
 
 
 def is_user_not_exists(userId):

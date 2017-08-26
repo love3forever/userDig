@@ -16,6 +16,7 @@ from params_dicts import get_user_follows_param, get_user_fans_param, \
 from encrypter import encrypted_request
 from proxy_hunter import gen_proxy, gen_kuaidaili, test_proxy
 
+
 host_url = 'https://music.163.com{}'
 indexURL = 'https://music.163.com/discover'
 playlist_URL = 'https://music.163.com/playlist?id={}'
@@ -66,10 +67,10 @@ def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
+        print("current url:{}".format(url))
         try:
             origin_data = requests.get(
                 url, timeout=10, headers=headers, proxies=proxies)
-            print(proxies)
             if origin_data.status_code == 200:
                 return origin_data
             else:
@@ -86,9 +87,9 @@ def get_data_from_web(url):
 
 def post_data_to_web(url, params):
     try:
+        print("current url:{}".format(url))
         result_data = requests.post(
             url, data=params, timeout=10, headers=headers, proxies=proxies)
-        print(proxies)
         if result_data.status_code == 200:
             return json.loads(result_data.text)
         else:
