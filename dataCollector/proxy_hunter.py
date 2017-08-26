@@ -7,15 +7,18 @@
 
 import requests
 from bs4 import BeautifulSoup
-from itertools import cycle
+from itertools import cycle, count
 import time
 
-proxy_source = 'http://www.kuaidaili.com/free/inha/{}/'
+proxy_source = 'http://www.kuaidaili.com/ops/proxylist/{}/'
+kuaidaili = ''
 
 proxies = {
     "http": "",
     "https": "",
 }
+
+#  普通代理
 
 
 def get_proxy_address(index):
@@ -29,20 +32,22 @@ def get_proxy_address(index):
         print(proxy_page.status_code)
         proxy_soup = BeautifulSoup(proxy_page.content, 'lxml')
         proxy_list = proxy_soup.select('.con-body')
-        if proxy_list:
-            proxies = proxy_list[0].select('tr')
-            for item in proxies[1:]:
-                info = item.select('td')
-                proxy_host = info[0].string
-                proxy_port = info[1].string
-                yield (proxy_host, proxy_port)
+        for item in proxy_list:
+            h2 = item.select('h2')
+            if h2 and u'免费高速HTTP代理IP列表' in h2[0].string:
+                proxies = item.select('tr')
+                for item in proxies[1:]:
+                    info = item.select('td')
+                    proxy_host = info[0].string
+                    proxy_port = info[1].string
+                    yield (proxy_host, proxy_port)
 
 
 def gen_proxy():
-    proxy_index = cycle(range(1, 20))
+    proxy_index = cycle(range(1, 11))
     for index in proxy_index:
-        time.sleep(20)
         print('wating for new proxy')
+        time.sleep(20)
         proxy_production = get_proxy_address(index)
         for proxy_pair in proxy_production:
             yield proxy_pair
@@ -56,7 +61,8 @@ def test_proxy(proxy_pair):
         test_response = requests.get(
             'http://ip.cn/', timeout=5, proxies=proxies)
     except Exception as e:
-        pass
+        print(str(e))
+        return False
     else:
         if test_response.status_code == 200:
             # print(test_response.content)
@@ -64,13 +70,35 @@ def test_proxy(proxy_pair):
             ip_info = test_soup.select('.well')
             if ip_info:
                 print(ip_info[0])
+                return True
+        else:
+            print(test_response.status_code)
+            return False
+
+
+# 快代理
+def gen_kuaidaili():
+    counter = count()
+    for index in counter:
+        time.sleep(5)
+        proxy_data = requests.get(kuaidaili)
+        proxy_text = proxy_data.text
+        proxy_pool = proxy_text.split('\r\n')
+        for proxy in proxy_pool:
+            yield tuple(proxy.split(':'))
 
 
 if __name__ == '__main__':
-    proxy_pool = gen_proxy()
+    # 普通代理测试
+    proxy_pool = gen_kuaidaili()
     times = 0
     for item in proxy_pool:
         test_proxy(item)
         times += 1
         if times > 100:
             break
+
+    # 快代理测试
+    # kdy = gen_kuaidaili()
+    # for i in range(201):
+    #     print next(kdy)

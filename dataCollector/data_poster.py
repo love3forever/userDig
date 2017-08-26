@@ -14,7 +14,7 @@ from params_dicts import get_user_follows_param, get_user_fans_param, \
     get_user_playrecord_week, get_user_playrecord_all, album_comments,\
     follow_and_fans_data
 from encrypter import encrypted_request
-from proxy_hunter import gen_proxy
+from proxy_hunter import gen_proxy, gen_kuaidaili, test_proxy
 
 host_url = 'https://music.163.com{}'
 indexURL = 'https://music.163.com/discover'
@@ -36,10 +36,29 @@ album_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/R_AL_3_{}'
 djradio_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/A_DJ_1_{}?csrf_token='
 djradio_detail_URL = 'http://music.163.com/dj?id={}'
 
-proxy_pool = gen_proxy()
+# proxy_pool = gen_proxy()
+proxy_pool = gen_kuaidaili()
 proxies = {
     "http": "",
     "https": "",
+}
+
+host = 'music.163.com'
+origin = 'http://music.163.com'
+pragma = 'no-cache'
+referer = 'http://music.163.com/'
+agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36'
+
+headers = {
+    'User-Agent': agent,
+    'Host': host,
+    'Origin': origin,
+    'Referer': referer,
+    'Pragma': pragma,
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'en,zh-CN;q=0.8,zh;q=0.6,zh-TW;q=0.4',
+    'Cache-Control': 'no-cache'
 }
 
 
@@ -47,23 +66,33 @@ def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
-        origin_data = requests.get(url, timeout=10)
-        if origin_data.status_code == 200:
-            return origin_data
-        else:
-            print(origin_data.status_code)
+        try:
+            origin_data = requests.get(
+                url, timeout=10, headers=headers, proxies=proxies)
+            print(proxies)
+            if origin_data.status_code == 200:
+                return origin_data
+            else:
+                print(origin_data.status_code)
+                gen_new_request()
+                get_data_from_web(url)
+        except Exception as e:
+            print(str(e))
             gen_new_request()
-            return get_data_from_web(url)
+            get_data_from_web(url)
     else:
         return None
 
 
 def post_data_to_web(url, params):
     try:
-        result_data = requests.post(url, data=params, timeout=10)
+        result_data = requests.post(
+            url, data=params, timeout=10, headers=headers, proxies=proxies)
+        print(proxies)
         if result_data.status_code == 200:
             return json.loads(result_data.text)
         else:
+            print(result_data.status_code)
             gen_new_request()
             post_data_to_web(url, params)
     except Exception as e:
@@ -74,11 +103,13 @@ def post_data_to_web(url, params):
 
 def gen_new_request():
     try:
-        proxy_pair = next(proxy_pool)
-        proxies['http'] = "http://{}:{}".format(*proxy_pair)
-        proxies['https'] = "http://{}:{}".format(*proxy_pair)
-        print('generating new proxy:{}:{}'.format(*proxy_pair))
-        requests.proxies = proxies
+        while True:
+            proxy_pair = next(proxy_pool)
+            if test_proxy(proxy_pair):
+                print('generating new proxy:{}:{}'.format(*proxy_pair))
+                proxies['http'] = "http://{}:{}".format(*proxy_pair)
+                proxies['https'] = "http://{}:{}".format(*proxy_pair)
+                break
     except Exception as e:
         print(str(e))
 
@@ -183,7 +214,11 @@ def get_user_follows_withoffset(userId, page):
     post_data['userId'] = userId
     post_data['limit'] = 100
     post_data['offset'] = (page - 1) * post_data['limit']
-    return data_poster_withoffset(follows_url, post_data)['follow']
+    result = data_poster_withoffset(follows_url, post_data)
+    if result:
+        return result.setdefault('follow', [])
+    else:
+        return None
 
 
 def get_user_fans(userid):
@@ -198,7 +233,11 @@ def get_user_fans_withoffset(userId, page):
     post_data['userId'] = userId
     post_data['limit'] = 100
     post_data['offset'] = (page - 1) * post_data['limit']
-    return data_poster_withoffset(fans_url, post_data)['followeds']
+    result = data_poster_withoffset(fans_url, post_data)
+    if result:
+        return result.setdefault('follow', [])
+    else:
+        return None
 
 
 def get_user_playlist(userid):

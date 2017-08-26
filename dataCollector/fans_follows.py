@@ -112,4 +112,4 @@ def insert_data(info, iteration_times):
 
 
 if __name__ == '__main__':
-    crawler_gogo(2)
+    crawler_gogo(4)
