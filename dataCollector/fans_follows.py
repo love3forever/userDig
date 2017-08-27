@@ -108,7 +108,7 @@ def is_user_not_exists(userId):
 
 def insert_data(info, iteration_times):
     insert_data = dict(info)
-    if is_user_not_exists(insert_data['userId']):
+    if info and is_user_not_exists(insert_data['userId']):
         insert_data.setdefault('iteration_times', iteration_times)
         try:
             # print(json.dumps(insert_data))

@@ -286,6 +286,8 @@ def get_user_index(userid):
     if index_data:
         index_content = index_data.content
         index_soup = BeautifulSoup(index_content, 'lxml')
+        if not index_soup.select('#head-box'):
+            return None
         index_box = index_soup.select('#head-box')[0]
         index_data = {}
         img_tag = index_box.select('#ava > img')
