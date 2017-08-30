@@ -251,20 +251,20 @@ def get_user_playlist(userid):
             'other': []
         }
         creator = None
-        for playlist in user_data:
-            convert_data = {
-                'name': playlist['name'],
-                'playCount': playlist['playCount'],
-                'playlistId': playlist['id'],
-                'coverImgUrl': playlist['coverImgUrl']
-            }
-            if str(playlist['userId']) == str(userid):
-                user_playlist_result['own'].append(convert_data)
-                if not creator:
-                    creator = playlist['creator']['nickname']
-            else:
-                user_playlist_result['other'].append(convert_data)
-
+        for data in user_data:
+            for playlist in data:
+                convert_data = {
+                    'name': playlist['name'],
+                    'playCount': playlist['playCount'],
+                    'playlistId': playlist['id'],
+                    'coverImgUrl': playlist['coverImgUrl']
+                }
+                if str(playlist['userId']) == str(userid):
+                    user_playlist_result['own'].append(convert_data)
+                    if not creator:
+                        creator = playlist['creator']['nickname']
+                else:
+                    user_playlist_result['other'].append(convert_data)
         return user_playlist_result, creator
     else:
         return None
