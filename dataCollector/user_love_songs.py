@@ -10,6 +10,7 @@ from pymongo import MongoClient
 from data_poster import get_user_playlist, get_playlist_detail
 from itertools import chain
 from datetime import datetime
+from multiprocessing.dummy import Pool
 
 mongo = MongoClient()
 db = mongo['userDig']
@@ -17,9 +18,12 @@ col = db['playlists']
 user_extral_col = db['user_extral']
 user_col = db['user_fans_and_follows']
 
+pool = Pool()
+
 
 def gen_allusers():
-    all_users = user_col.find({}, {'_id': 0, 'userId': 1})
+    all_users = user_col.find({'playlist': None}, {'_id': 0, 'userId': 1})
+    print('{} users data to be inserted'.format(all_users.count()))
     for user in all_users:
         yield user
 
@@ -36,7 +40,7 @@ def filter_tracks(track):
 
 
 def insert_playlist_data(info):
-    if is_playlist_not_exists(info.setdefault('id', '')):
+    if info and is_playlist_not_exists(info.setdefault('id', '')):
         insert_data = {}
         insert_data['playlistId'] = info.setdefault('id', '')
         insert_data['name'] = info.setdefault('name', '')
@@ -58,30 +62,33 @@ def is_playlist_not_exists(playlistId):
     return col.find_one({'playlistId': playlistId}) is None
 
 
+def save_playlist_data(user):
+    print(user['userId'])
+    user_playlist_data, _ = get_user_playlist(user['userId'])
+    if user_playlist_data:
+        # 获取用户收藏的歌单和自己创建的歌单
+        theirs_playlist = user_playlist_data['other']
+        own_playlist = user_playlist_data['own']
+        # 获取歌单详情并将歌单信息更新至用户数据
+        for theirs in theirs_playlist:
+            theirs.setdefault('score', 2)
+        for own in own_playlist:
+            own.setdefault('score', 4)
+        all_playlist = theirs_playlist + own_playlist
+
+        for playlist in all_playlist:
+            if is_playlist_not_exists(playlist['playlistId']):
+                playlist_data = get_playlist_detail(playlist['playlistId'])
+                if playlist_data:
+                    insert_playlist_data(
+                        playlist_data.setdefault('result', None))
+        user_col.update({'userId': user['userId']}, {
+                        '$set': {'playlist': all_playlist}})
+
+
 def crawler_go():
     all_users = gen_allusers()
-    for user in all_users:
-        print(user['userId'])
-        user_playlist_data, _ = get_user_playlist(user['userId'])
-        if user_playlist_data:
-            # 获取用户收藏的歌单和自己创建的歌单
-            theirs_playlist = user_playlist_data['other']
-            own_playlist = user_playlist_data['own']
-            # 将歌单信息更新至用户数据
-            for theirs in theirs_playlist:
-                theirs.setdefault('score', 2)
-            for own in own_playlist:
-                own.setdefault('score', 4)
-            all_playlist = theirs_playlist + own_playlist
-            user_col.update({'userId': user['userId']}, {
-                            '$set': {'playlist': all_playlist}})
-            # 获取歌单详情
-            for playlist in all_playlist:
-                if is_playlist_not_exists(playlist['playlistId']):
-                    playlist_data = get_playlist_detail(playlist['playlistId'])
-                    if playlist_data:
-                        insert_playlist_data(
-                            playlist_data.setdefault('result', None))
+    pool.map(save_playlist_data, all_users)
 
 
 if __name__ == '__main__':

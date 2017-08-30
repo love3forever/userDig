@@ -67,11 +67,11 @@ def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
-        print("current url:{}".format(url))
         try:
             origin_data = requests.get(
                 url, timeout=10, headers=headers, proxies=proxies)
             if origin_data.status_code == 200:
+                print("current url:{}".format(url))
                 return origin_data
             else:
                 print(origin_data.status_code)
@@ -87,10 +87,10 @@ def get_data_from_web(url):
 
 def post_data_to_web(url, params):
     try:
-        print("current url:{}".format(url))
         result_data = requests.post(
             url, data=params, timeout=10, headers=headers, proxies=proxies)
         if result_data.status_code == 200:
+            print("current url:{}".format(url))
             return json.loads(result_data.text)
         else:
             print(result_data.status_code)
