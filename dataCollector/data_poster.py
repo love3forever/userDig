@@ -5,8 +5,6 @@
 # @Link    : https://eclipsesv.com
 # @Version : $Id$
 import json
-import time
-
 import requests
 from bs4 import BeautifulSoup
 from params_dicts import get_user_follows_param, get_user_fans_param, \
@@ -14,7 +12,7 @@ from params_dicts import get_user_follows_param, get_user_fans_param, \
     get_user_playrecord_week, get_user_playrecord_all, album_comments,\
     follow_and_fans_data
 from encrypter import encrypted_request
-from proxy_hunter import gen_proxy, gen_kuaidaili, test_proxy
+from proxy_hunter import gen_proxy, test_proxy
 
 
 host_url = 'https://music.163.com{}'
@@ -37,8 +35,8 @@ album_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/R_AL_3_{}'
 djradio_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/A_DJ_1_{}?csrf_token='
 djradio_detail_URL = 'http://music.163.com/dj?id={}'
 
-# proxy_pool = gen_proxy()
-proxy_pool = gen_kuaidaili()
+proxy_pool = gen_proxy()
+# proxy_pool = gen_kuaidaili()
 proxies = {
     "http": "",
     "https": "",
@@ -71,14 +69,11 @@ def get_data_from_web(url):
             origin_data = requests.get(
                 url, timeout=10, headers=headers, proxies=proxies)
             if origin_data.status_code == 200:
-                print("current url:{}".format(url))
                 return origin_data
             else:
-                print(origin_data.status_code)
                 gen_new_request()
                 get_data_from_web(url)
-        except Exception as e:
-            print(str(e))
+        except Exception:
             gen_new_request()
             get_data_from_web(url)
     else:
@@ -90,14 +85,11 @@ def post_data_to_web(url, params):
         result_data = requests.post(
             url, data=params, timeout=10, headers=headers, proxies=proxies)
         if result_data.status_code == 200:
-            print("current url:{}".format(url))
             return json.loads(result_data.text)
         else:
-            print(result_data.status_code)
             gen_new_request()
             post_data_to_web(url, params)
-    except Exception as e:
-        print(str(e))
+    except Exception:
         gen_new_request()
         post_data_to_web(url, params)
 
@@ -107,12 +99,11 @@ def gen_new_request():
         while True:
             proxy_pair = next(proxy_pool)
             if test_proxy(proxy_pair):
-                print('generating new proxy:{}:{}'.format(*proxy_pair))
                 proxies['http'] = "http://{}:{}".format(*proxy_pair)
                 proxies['https'] = "http://{}:{}".format(*proxy_pair)
                 break
-    except Exception as e:
-        print(str(e))
+    except Exception:
+        pass
 
 
 def get_playlist_data(playlist_id):
@@ -175,8 +166,6 @@ def data_poster(uid, postURL, keyword, getparamFunc):
             encrtyed_param = encrypted_request(post_param)
             response_data = post_data_to_web(postURL, encrtyed_param)
             if not response_data:
-                # print('------------系统休眠------------')
-                # time.sleep(60 * 80)
                 break
             if keyword not in response_data.keys():
                 break
@@ -185,8 +174,7 @@ def data_poster(uid, postURL, keyword, getparamFunc):
             data_times += 1
             try:
                 data_flag = response_data['more']
-            except Exception as e:
-                print(str(e))
+            except Exception:
                 data_flag = False
     else:
         print('{} should be callable'.format(str(getparamFunc)))

@@ -11,7 +11,7 @@ from itertools import cycle, count
 import time
 
 proxy_source = 'http://www.kuaidaili.com/ops/proxylist/{}/'
-kuaidaili = 'http://dev.kuaidaili.com/api/getproxy/?orderid=940357427810641&num=300&b_pcchrome=1&b_pcie=1&b_pcff=1&protocol=2&method=2&an_ha=1&sep=1'
+kuaidaili = ''
 
 proxies = {
     "http": "",

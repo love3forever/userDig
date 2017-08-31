@@ -5,20 +5,19 @@
 # @Link    : https://eclipsesv.com
 # @Version : $Id$
 from pymongo import MongoClient, DESCENDING
-from itertools import ifilter, chain, islice
+from itertools import chain, islice
 import data_poster
-import json
-from threading import Thread
+from multiprocessing.dummy import Pool
 
 mongo = MongoClient()
 db = mongo['userDig']
 col = db['user_fans_and_follows']
+pool = Pool()
 
 seed_userId = '77159064'
 
 
 def get_user_info(userId):
-    print('requesting data for user:{}'.format(userId))
     user_info = dict()
     user_info.setdefault('userId', userId)
     user_basic_info = data_poster.get_user_index(userId)
@@ -31,8 +30,6 @@ def get_user_info(userId):
                     [x['userId'] for x in fans])
         else:
             for x in range(1, 11):
-                # time.sleep(1)
-                # print('requesting fans data for user:{} with offset:{}'.format(userId, x))
                 user_fans_withoffset = data_poster.get_user_fans_withoffset(
                     userId, x)
                 if user_fans_withoffset:
@@ -40,7 +37,6 @@ def get_user_info(userId):
                         [x['userId'] for x in user_fans_withoffset])
                 else:
                     break
-        # print('got user:{} fans data'.format(userId))
         if int(user_info['follows']) < 300:
             user_follows_list = data_poster.get_user_follows(userId)
             for follows in user_follows_list:
@@ -48,16 +44,13 @@ def get_user_info(userId):
                     [x['userId'] for x in follows])
         else:
             for x in range(1, 11):
-                # time.sleep(1)
-                # print('requesting follows data for user:{} with offset:{}'.format(userId, x))
-                user_follows_withoffset = data_poster.get_user_follows_withoffset(
-                    userId, x)
+                user_follows_withoffset = \
+                    data_poster.get_user_follows_withoffset(userId, x)
                 if user_follows_withoffset:
                     user_info.setdefault('follows_list', []).extend(
                         [x['userId'] for x in user_follows_withoffset])
                 else:
                     break
-        print('got user:{} follows data'.format(userId))
     return user_info
 
 
@@ -85,25 +78,35 @@ def crawler_gogo(times_end=10):
                     follows_list = item.setdefault('follows_list', [])
                     all_list = chain(fans_list, follows_list)
                     all_list_available = filter(is_user_not_exists, all_list)
-                    thread_num = len(all_list_available) / 200
+                    thread_num = len(all_list_available) / 100
                     for num in range(thread_num):
                         partial_list_available = islice(
-                            all_list_available, num * 200, num * 200 + 200)
-                        for x in partial_list_available:
-                            crawler = Thread(target=insert_data,
-                                             args=(get_user_info(x), i,))
-                            crawler.start()
-                    # for x in all_list_available:
-                    #     insert_data(get_user_info(x), i)
+                            all_list_available, num * 100, num * 100 + 100)
+                        user_data = pool.imap(
+                            get_user_info, partial_list_available)
+                        insert_func = wrap_insert_data(i)
+                        pool.map(insert_func, user_data)
 
 
 def is_user_not_exists(userId):
     data = col.find_one({'userId': userId})
-    if data is not None:
-        # print('user:{} data exists'.format(userId))
-        return False
-    else:
-        return True
+    return data is None
+
+
+def wrap_insert_data(times):
+    iteration_times = times
+
+    def save_data(info):
+        insert_data = dict(info)
+        if info and is_user_not_exists(insert_data['userId']):
+            insert_data.setdefault('iteration_times', iteration_times)
+            try:
+                col.insert_one(insert_data)
+            except Exception:
+                pass
+            else:
+                print('user:{} info inserted'.format(insert_data['userId']))
+    return save_data
 
 
 def insert_data(info, iteration_times):
@@ -111,11 +114,9 @@ def insert_data(info, iteration_times):
     if info and is_user_not_exists(insert_data['userId']):
         insert_data.setdefault('iteration_times', iteration_times)
         try:
-            # print(json.dumps(insert_data))
             col.insert_one(insert_data)
-        except Exception as e:
-            print(str(e))
-            print('Error happened:{}'.format(insert_data))
+        except Exception:
+            pass
         else:
             print('user:{} info inserted'.format(insert_data['userId']))
 

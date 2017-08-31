@@ -4,11 +4,8 @@
 # @Author  : Wangmengcn (eclipse_sv@163.com)
 # @Link    : https://eclipsesv.com
 # @Version : $Id$
-import json
-
 from pymongo import MongoClient
 from data_poster import get_user_playlist, get_playlist_detail
-from itertools import chain
 from datetime import datetime
 from multiprocessing.dummy import Pool
 
