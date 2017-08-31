@@ -8,6 +8,7 @@
 from pymongo import MongoClient
 from neo4j.v1 import GraphDatabase, ConstraintError
 from datetime import datetime
+from multiprocessing.dummy import Pool
 
 mongo = MongoClient()
 db = mongo['userDig']
@@ -18,9 +19,11 @@ song_col = db['songs']
 uri = "bolt://localhost:7687"
 driver = GraphDatabase.driver(uri, auth=("neo4j", "abc@123"))
 
+pool = Pool()
+
 
 def gen_playlists():
-    playlists = col.find({}, {'_id': 0, 'songs': 0})
+    playlists = col.find({}, {'_id': 0})
     for playlist in playlists:
         yield playlist
 
@@ -122,29 +125,46 @@ def save_song_data():
             print(str(e))
 
 
-def create_song_records():
-    all_songs = gen_all_songs()
-    for song in all_songs:
-        try:
-            with driver.session() as session:
-                with session.begin_transaction() as tx:
-                    tx.run("CREATE ("
-                           "song:Song_Music163"
-                           "{"
-                           "    id:{songId},"
-                           "    name:{name},"
-                           "    artists:{artists}"
-                           "})",
+def create_song_records(song):
+    try:
+        with driver.session() as session:
+            with session.begin_transaction() as tx:
+                tx.run("CREATE ("
+                       "song:Song_Music163"
+                       "{"
+                       "    id:{songId},"
+                       "    name:{name},"
+                       "    artists:{artists}"
+                       "})",
+                       songId=song.setdefault('songId', ''),
+                       name=song.setdefault('name', ''),
+                       artists=song.setdefault('artists', []),
+                       )
+    except ConstraintError:
+        pass
+    else:
+        print(
+            'record:song-{} \
+            inserted'.format(song.setdefault('songId', '')))
+
+
+def create_relation_playlist_and_song(playlist):
+    songs = playlist.setdefault('songs', [])
+    try:
+        with driver.session() as session:
+            with session.begin_transaction() as tx:
+                for song in songs:
+                    tx.run("MATCH (playlist:Playlist_Music163)"
+                           "WHERE playlist.id = {playlistId} "
+                           "MATCH (song:Song_Music163)"
+                           "WHERE song.id = {songId} "
+                           "CREATE (playlist)-[:contain]->(song)",
                            songId=song.setdefault('songId', ''),
-                           name=song.setdefault('name', ''),
-                           artists=song.setdefault('artists', []),
+                           playlistId=playlist.setdefault(
+                               'playlistId', '')
                            )
-        except ConstraintError:
-            pass
-        else:
-            print(
-                'record:song-{} \
-                inserted'.format(song.setdefault('songId', '')))
+    except Exception as e:
+        raise e
 
 
 if __name__ == '__main__':
@@ -154,9 +174,12 @@ if __name__ == '__main__':
     #     create_playlist_record(playlist)
     # 创建用户和歌单关系
     # users = gen_users_relate2_playlist()
-    # for user in users:
-    #     create_relation_user_and_playlist(user)
+    # map.pool(create_relation_user_and_playlist, users)
     # 保存歌曲信息
     # save_song_data()
     # 建立歌曲record
-    create_song_records()
+    all_songs = gen_all_songs()
+    pool.map(create_song_records, all_songs)
+    # 建立歌单和歌曲的关系
+    # playlists = gen_playlists()
+    # pool.map(create_relation_playlist_and_song, playlists)
