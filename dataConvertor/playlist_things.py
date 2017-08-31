@@ -13,6 +13,7 @@ mongo = MongoClient()
 db = mongo['userDig']
 col = db['playlists']
 user_col = db['user_fans_and_follows']
+song_col = db['songs']
 
 uri = "bolt://localhost:7687"
 driver = GraphDatabase.driver(uri, auth=("neo4j", "abc@123"))
@@ -22,6 +23,19 @@ def gen_playlists():
     playlists = col.find({}, {'_id': 0, 'songs': 0})
     for playlist in playlists:
         yield playlist
+
+
+def gen_songs_in_playlist():
+    playlists = col.find({}, {'_id': 0, 'songs': 1})
+    for playlist in playlists:
+        for song in playlist.setdefault('songs', []):
+            yield song
+
+
+def gen_all_songs():
+    songs = song_col.find({}, {'_id': 0})
+    for song in songs:
+        yield song
 
 
 def gen_users_relate2_playlist():
@@ -99,10 +113,50 @@ def create_relation_user_and_playlist(user):
             print('user:{} and playlist relationship complete'.format(userId))
 
 
+def save_song_data():
+    songs = gen_songs_in_playlist()
+    for song in songs:
+        try:
+            song_col.insert_one(song)
+        except Exception as e:
+            print(str(e))
+
+
+def create_song_records():
+    all_songs = gen_all_songs()
+    for song in all_songs:
+        try:
+            with driver.session() as session:
+                with session.begin_transaction() as tx:
+                    tx.run("CREATE ("
+                           "song:Song_Music163"
+                           "{"
+                           "    id:{songId},"
+                           "    name:{name},"
+                           "    artists:{artists}"
+                           "})",
+                           songId=song.setdefault('songId', ''),
+                           name=song.setdefault('name', ''),
+                           artists=song.setdefault('artists', []),
+                           )
+        except ConstraintError:
+            pass
+        else:
+            print(
+                'record:song-{} \
+                inserted'.format(song.setdefault('songId', '')))
+
+
 if __name__ == '__main__':
+    # 创建歌单record
     # playlists = gen_playlists()
     # for playlist in playlists:
     #     create_playlist_record(playlist)
-    users = gen_users_relate2_playlist()
-    for user in users:
-        create_relation_user_and_playlist(user)
+    # 创建用户和歌单关系
+    # users = gen_users_relate2_playlist()
+    # for user in users:
+    #     create_relation_user_and_playlist(user)
+    # 保存歌曲信息
+    # save_song_data()
+    # 建立歌曲record
+    create_song_records()
