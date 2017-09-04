@@ -14,7 +14,7 @@ db = mongo['userDig']
 col = db['user_fans_and_follows']
 pool = Pool()
 
-seed_userId = '77159064'
+seed_userId = 77159064
 
 
 def get_user_info(userId):
@@ -54,7 +54,7 @@ def get_user_info(userId):
     return user_info
 
 
-def crawler_gogo(times_end=10):
+def crawler_gogo(times_end=2):
     if times_end:
         max_iteration_times = col.find().sort(
             'iteration_times', DESCENDING).limit(1)
@@ -73,19 +73,22 @@ def crawler_gogo(times_end=10):
                 last_interation = col.find(
                     {'iteration_times': i - 1},
                     {'_id': 0, 'fans_list': 1, 'follows_list': 1})
+                print(last_interation.count())
                 for item in last_interation:
                     fans_list = item.setdefault('fans_list', [])
                     follows_list = item.setdefault('follows_list', [])
                     all_list = chain(fans_list, follows_list)
                     all_list_available = filter(is_user_not_exists, all_list)
-                    thread_num = len(all_list_available) / 100
-                    for num in range(thread_num):
-                        partial_list_available = islice(
-                            all_list_available, num * 100, num * 100 + 100)
-                        user_data = pool.imap(
-                            get_user_info, partial_list_available)
-                        insert_func = wrap_insert_data(i)
-                        pool.map(insert_func, user_data)
+                    # thread_num = len(all_list_available) / 100
+                    # for num in range(thread_num + 1):
+                    #     partial_list_available = islice(
+                    #         all_list_available, num * 100, num * 100 + 100)
+                    #     user_data = pool.imap(
+                    #         get_user_info, partial_list_available)
+                    #     insert_func = wrap_insert_data(i)
+                    #     pool.map(insert_func, user_data)
+                    for item in all_list_available:
+                        insert_data(get_user_info(item), i)
 
 
 def is_user_not_exists(userId):

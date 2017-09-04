@@ -19,10 +19,12 @@ pool = Pool()
 
 
 def gen_allusers():
-    all_users = user_col.find({'playlist': None}, {'_id': 0, 'userId': 1})
+    all_users = user_col.find(
+        {'playlist': None}, {'_id': 0, 'userId': 1}, no_cursor_timeout=True)
     print('{} users data to be inserted'.format(all_users.count()))
     for user in all_users:
         yield user
+    all_users.close()
 
 
 def filter_tracks(track):
@@ -84,8 +86,10 @@ def save_playlist_data(user):
 
 
 def crawler_go():
-    all_users = gen_allusers()
-    pool.map(save_playlist_data, all_users)
+    # all_users = gen_allusers()
+    # pool.map(save_playlist_data, all_users)
+    for user in gen_allusers():
+        save_playlist_data(user)
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ from params_dicts import get_user_follows_param, get_user_fans_param, \
     get_user_playrecord_week, get_user_playrecord_all, album_comments,\
     follow_and_fans_data
 from encrypter import encrypted_request
-from proxy_hunter import gen_proxy, test_proxy
+from proxy_hunter import gen_proxy, test_proxy, gen_myproxy
 
 
 host_url = 'https://music.163.com{}'
@@ -35,7 +35,8 @@ album_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/R_AL_3_{}'
 djradio_comments_URL = 'http://music.163.com/weapi/v1/resource/comments/A_DJ_1_{}?csrf_token='
 djradio_detail_URL = 'http://music.163.com/dj?id={}'
 
-proxy_pool = gen_proxy()
+# proxy_pool = gen_proxy()
+proxy_pool = gen_myproxy()
 # proxy_pool = gen_kuaidaili()
 proxies = {
     "http": "",
@@ -60,15 +61,20 @@ headers = {
     'Cache-Control': 'no-cache'
 }
 
+session = requests.Session()
+http_adapter = requests.adapters.HTTPAdapter(max_retries=3)
+session.mount('http://', http_adapter)
+
 
 def get_data_from_web(url):
     # 根据url获取原始数据
     # time.sleep(1)
     if url:
         try:
-            origin_data = requests.get(
+            origin_data = session.get(
                 url, timeout=10, headers=headers, proxies=proxies)
             if origin_data.status_code == 200:
+                print('current url:{}'.format(url))
                 return origin_data
             else:
                 gen_new_request()
@@ -82,9 +88,10 @@ def get_data_from_web(url):
 
 def post_data_to_web(url, params):
     try:
-        result_data = requests.post(
+        result_data = session.post(
             url, data=params, timeout=10, headers=headers, proxies=proxies)
         if result_data.status_code == 200:
+            print('current url:{}'.format(url))
             return json.loads(result_data.text)
         else:
             gen_new_request()

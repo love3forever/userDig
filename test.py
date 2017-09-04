@@ -9,7 +9,7 @@ import unittest
 from dataCollector import data_poster
 
 wrong_userId = '-1'
-my_userId = '77159064'
+my_userId = 77159064
 
 
 class TestUserInfo(unittest.TestCase):

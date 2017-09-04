@@ -20,9 +20,10 @@ def gen_userdata_from_mongo():
     all_users = col.find(
         {}, {'_id': 0, 'userId': 1, 'fans_list': 1,
              'follows_list': 1, 'name': 1, 'location': 1,
-             'gender': 1})
+             'gender': 1}, no_cursor_timeout=True)
     for user in all_users:
         yield user
+    all_users.close()
 
 
 def create_user_in_noe4j(user):

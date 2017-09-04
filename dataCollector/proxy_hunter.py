@@ -9,6 +9,8 @@ import requests
 from bs4 import BeautifulSoup
 from itertools import cycle, count
 import time
+from datetime import datetime, timedelta
+from threading import Thread
 
 proxy_source = 'http://www.kuaidaili.com/ops/proxylist/{}/'
 kuaidaili = ''
@@ -88,17 +90,59 @@ def gen_kuaidaili():
             yield tuple(proxy.split(':'))
 
 
+def gen_myproxy():
+    my_host = cycle(['eclipsesv.com', 'git.eclipsesv.com',
+                     'service.eclipsesv.com', ''])
+    cold_down = {}
+    cold_time = timedelta(minutes=15)
+    default_cold = timedelta(minutes=14)
+    for host in my_host:
+        last_use_time = cold_down.setdefault(
+            host, datetime.now() - default_cold)
+        if datetime.now() - last_use_time >= cold_time:
+            yield (host, 8899)
+            cold_down[host, datetime.now()]
+        else:
+            time_remaining = (cold_time - (datetime.now() -
+                                           last_use_time)).total_seconds()
+            waiting_cold_down = Thread(
+                target=counting_down, args=(time_remaining,))
+            waiting_cold_down.start()
+            time.sleep(time_remaining)
+            if host:
+                yield (host, 8899)
+            else:
+                yield ('', '')
+            cold_down[host] = datetime.now()
+
+
+def counting_down(seconds=0):
+    seconds = int(seconds)
+    while True:
+        if seconds > 0:
+            print('cold down in {} seconds'.format(seconds))
+            time.sleep(5)
+            seconds -= 5
+        else:
+            break
+
+
 if __name__ == '__main__':
     # 普通代理测试
-    proxy_pool = gen_kuaidaili()
-    times = 0
-    for item in proxy_pool:
-        test_proxy(item)
-        times += 1
-        if times > 100:
-            break
+    # proxy_pool = gen_kuaidaili()
+    # times = 0
+    # for item in proxy_pool:
+    #     test_proxy(item)
+    #     times += 1
+    #     if times > 100:
+    #         break
 
     # 快代理测试
     # kdy = gen_kuaidaili()
     # for i in range(201):
     #     print next(kdy)
+
+    # 自建代理
+    my_proxy = gen_myproxy()
+    for proxy in my_proxy:
+        print(proxy)

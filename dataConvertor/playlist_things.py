@@ -23,30 +23,32 @@ pool = Pool()
 
 
 def gen_playlists():
-    playlists = col.find({}, {'_id': 0})
+    playlists = col.find({}, {'_id': 0}, no_cursor_timeout=True)
     for playlist in playlists:
         yield playlist
+    playlists.close()
 
 
 def gen_songs_in_playlist():
-    playlists = col.find({}, {'_id': 0, 'songs': 1})
+    playlists = col.find({}, {'_id': 0, 'songs': 1}, no_cursor_timeout=True)
     for playlist in playlists:
         for song in playlist.setdefault('songs', []):
             yield song
+    playlists.close()
 
 
 def gen_all_songs():
-    songs = song_col.find({}, {'_id': 0})
+    songs = song_col.find({}, {'_id': 0}, no_cursor_timeout=True)
     for song in songs:
         yield song
-
+    songs.close()
 
 def gen_users_relate2_playlist():
     users = user_col.find({'playlist': {'$ne': None}}, {
-                          '_id': 0, 'userId': 1, 'playlist': 1})
+                          '_id': 0, 'userId': 1, 'playlist': 1}, no_cursor_timeout=True)
     for user in users:
         yield user
-
+    users.close()
 
 def create_playlist_record(playlist):
     if playlist:
