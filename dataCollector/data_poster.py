@@ -453,13 +453,18 @@ def get_artist_index_page(artistId):
     index_data = get_data_from_web(index_url)
     index_info = {}
     if index_data:
+        index_info.setdefault('artistId', artistId)
         index_soup = BeautifulSoup(index_data.content, 'lxml')
         top_50_songs = index_soup.select('#song-list-pre-cache > textarea')
-        if top_50_songs:
+        if len(top_50_songs):
             songs = top_50_songs[0].string
-            index_info.setdefault('top50', json.loads(songs))
+            try:
+                index_info.setdefault('top50', json.loads(songs))
+            except Exception as e:
+                print(str(e))
         pic_info = index_soup.select('.n-artist > img')
-        index_info.setdefault('img', pic_info[0]['src'] or None)
+        if len(pic_info) and pic_info[0] is not None:
+            index_info.setdefault('img', pic_info[0]['src'])
         try:
             artist_name = index_soup.select('#artist-name')[0].string
             artist_alias = index_soup.select('#artist-alias')[0].string

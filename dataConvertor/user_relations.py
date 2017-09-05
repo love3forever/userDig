@@ -85,8 +85,8 @@ def create_relations_in_neo4j(user):
 
 
 if __name__ == '__main__':
-    for user in gen_userdata_from_mongo():
-        create_user_in_noe4j(user)
+    # for user in gen_userdata_from_mongo():
+    #     create_user_in_noe4j(user)
 
     for user in gen_userdata_from_mongo():
         create_relations_in_neo4j(user)

@@ -43,12 +43,14 @@ def gen_all_songs():
         yield song
     songs.close()
 
+
 def gen_users_relate2_playlist():
     users = user_col.find({'playlist': {'$ne': None}}, {
                           '_id': 0, 'userId': 1, 'playlist': 1}, no_cursor_timeout=True)
     for user in users:
         yield user
     users.close()
+
 
 def create_playlist_record(playlist):
     if playlist:
@@ -176,12 +178,15 @@ if __name__ == '__main__':
     #     create_playlist_record(playlist)
     # 创建用户和歌单关系
     # users = gen_users_relate2_playlist()
-    # map.pool(create_relation_user_and_playlist, users)
+    # for user in users:
+    #     create_relation_user_and_playlist(user)
     # 保存歌曲信息
     # save_song_data()
     # 建立歌曲record
-    all_songs = gen_all_songs()
-    pool.map(create_song_records, all_songs)
+    # all_songs = gen_all_songs()
+    # for song in all_songs:
+    #     create_song_records(song)
     # 建立歌单和歌曲的关系
-    # playlists = gen_playlists()
-    # pool.map(create_relation_playlist_and_song, playlists)
+    playlists = gen_playlists()
+    for playlist in playlists:
+        create_relation_playlist_and_song(playlist)
