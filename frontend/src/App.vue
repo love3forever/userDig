@@ -1,14 +1,27 @@
 <template>
   <div id="app">
-    <img src="./assets/logo.png">
     <router-view></router-view>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'app'
+  name: 'app',
+  data: function () {
+    return {
+      jwt_token: 0
+    }
+  },
+  mounted: function (){
+    let jwt_token = localStorage.getItem('id_token')
+    console.log(jwt_token)
+    // if (!jwt_token){
+
+    // }
+    this.$router.push('/login');
+  }
 }
+
 </script>
 
 <style>
@@ -18,6 +31,15 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+}
+
+.el-row {
+  margin-bottom: 20px;
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+.el-col {
+  border-radius: 4px;
 }
 </style>
