@@ -41,7 +41,7 @@ class User(object):
             return False, None
 
     def user_update_password(self, newpassword):
-        flag = self.user_password_check()
+        flag, _ = self.user_password_check()
         if flag:
             user_col.update_one({'username': self.username}, {
                                 '$set': {'password':
@@ -55,7 +55,10 @@ class User(object):
         mongo_id = ObjectId(id)
         print(mongo_id)
         user_data = user_col.find_one({'_id': mongo_id})
-        return User(user_data['username'], user_data['password'])
+        if user_data is not None:
+            return User(user_data['username'], user_data['password'])
+        else:
+            return None
 
     @property
     def id(self):

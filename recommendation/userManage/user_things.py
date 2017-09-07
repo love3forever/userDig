@@ -8,6 +8,8 @@ from flask import jsonify, make_response, current_app
 from flask.blueprints import Blueprint
 from flask_restful import Api, Resource, request, abort
 
+from flask_jwt import jwt_required,current_identity
+
 from user_model import User
 
 bp_user = Blueprint(__name__, 'bp_user', url_prefix='/api/v1/user')
@@ -42,6 +44,7 @@ class UserRigister(Resource):
 class UserPasswordUpdate(Resource):
     """更新用户密码"""
 
+    @jwt_required()
     def post(self):
         update_password_data = request.get_json()
         try:
