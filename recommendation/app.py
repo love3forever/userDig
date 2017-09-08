@@ -9,18 +9,20 @@ from flask import Flask
 from flask_jwt import JWT
 from userManage.user_model import User
 from userManage.user_things import bp_user
+from userData.user_detail import bp_user_detail
 
 app = Flask(__name__)
 # 如果使用jwt 必须指明app.config.SECRET_KEY或者JWT_SECRET_KEY
 # app.config['SECRET_KEY'] = 'super-secret'
 app.register_blueprint(bp_user)
+app.register_blueprint(bp_user_detail)
 
 
 # jwt相关
 jwt_config = {
     'JWT_SECRET_KEY': 'jwt_secret',
     'JWT_AUTH_URL_RULE': '/api/v1/auth',
-    'JWT_EXPIRATION_DELTA': timedelta(seconds=60)
+    'JWT_EXPIRATION_DELTA': timedelta(days=1)
 }
 
 app.config.update(jwt_config)
