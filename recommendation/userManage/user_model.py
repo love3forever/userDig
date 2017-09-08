@@ -19,7 +19,8 @@ class User(object):
     def user_register(self):
         # 用户注册
         if user_col.find_one({'username': self.username}) is not None:
-            error_msg = 'username:{} has been used'.format(self.username)
+            error_msg = 'username:{} has been used'.format(
+                self.username.encode('utf-8'))
             return False, error_msg
         else:
             user_data = {
@@ -27,7 +28,8 @@ class User(object):
                 'password': generate_password_hash(self.password)
             }
             user_col.insert_one(user_data)
-            success_msg = 'user:{} register successfully'.format(self.username)
+            success_msg = 'user:{} register successfully'.format(
+                self.username.encode('utf-8'))
             return True, success_msg
 
     def user_password_check(self):

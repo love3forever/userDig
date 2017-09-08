@@ -41,8 +41,10 @@ export default {
         this.$http.post('/api/v1/auth', JSON.stringify({username: this.username,password:this.password})).then(response=>{
           console.log(response) 
           localStorage.setItem('id_token',response.data['access_token'])
-          this.$message('登陆成功');
-          this.$router.push('/');
+          this.$message('登陆成功')
+          this.$router.push('/')
+        }, response=>{
+          this.$message('用户名或密码错误')
         })
       }
       console.log('try login')
