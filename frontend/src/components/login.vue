@@ -47,6 +47,13 @@ export default {
       }
       console.log('try login')
     }
+  },
+  mounted: function (){
+    let jwt_token = localStorage.getItem('id_token')
+    if (jwt_token) {
+      this.$message('请先登出当前用户')
+      this.$router.push('/')
+    }
   }
 };
 </script>

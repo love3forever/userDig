@@ -11,14 +11,6 @@ export default {
     return {
       jwt_token: 0
     }
-  },
-  mounted: function (){
-    let jwt_token = localStorage.getItem('id_token')
-    console.log(jwt_token)
-    // if (!jwt_token){
-
-    // }
-    this.$router.push('/login');
   }
 }
 
